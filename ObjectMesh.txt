@@ -1,0 +1,36 @@
+-------- Object Mesh Documentation--------
+
+
+Previous games that I have made were not able to handle many AI entities at once because the decision making for each entity made an O(n) check against every other entity.
+This led to an O(n^2) complexity that slowed things down.
+Object Mesh is an implementation of an Axially Aligned Bounding Box. It partitions the set of GameObjects based on their location to the entity to check only those that are close to it.
+
+General Algorithm
+    int boxSize - size of the boxes to put GameObjects into. E.g. a size of 50 means that entities from 0-50 units away will be chosen
+    List<GameObject>[x, y] - A 3D collection for GameObjects. Many GameObjects can be accessed in O(1) time.
+    windowSize - size of the window, width and height
+    
+    
+    A new ObjectMesh is created every tick which can be queried to get objects within a certain distance.
+    
+    // Create new ObjectMesh
+    public ObjectMesh(int width, int height, int boxSize, List<GameObject> allObjects)
+        Initialze empty List<GameObject>[,] with sizes [ceiling(height / boxSize) + 1, ceiling(width / boxSize) + 1]
+        Drop GameObjects into each list based on (xPos / boxSize, yPos / boxSize)
+        
+        
+    // Query the ObjectMesh
+    List<GameObject> GetObjectsInRange(int xPos, int yPos, int searchRadius)
+        
+        List<GameObject> nearbyObjects = new List<GameObject>();
+
+        boxRadius = searchRadius / boxSize // number of boxes within the search radius
+        xBoxPos = xPos and yPos flattened to the position in boxes
+        
+        Loop through all boxes in the 2nd quadrant (left and above (xPos, yPos)) that are within the boxRadius distance away
+        using some math to make the range more accurately approximate a circle.
+        Then use this range and symmetry to compute the other 3 quadrants.
+
+        Check each selected box and make sure it is valid, then dump all GameObjects from List<GameObject>[,] into the list of nearby objects.
+        
+        Finally return nearbyObjects.

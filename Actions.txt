@@ -1,0 +1,66 @@
+Documentation for the action system for Tribe
+
+Actions for different types of GameObjects.
+    EffectActions
+    EntityActions
+    PickupActions
+    PlantActions
+    
+    
+GameObjects store actions that are run during the normal update loop (entities in EntityController, plants in PlantController) or through the schedule system.
+Actions stored as separate classes to store data unique to different types of actions like Goto, Follow, Attack, Eat, etc.
+
+Schedule
+    Apply actions after a certain time
+    Stored in a priority queue in WorldController that uses the current game time to decide whether to assign actions.
+    Stored as GameObjectActions and pattern matched down to Effect, Entity, etc.
+    
+
+Usage    
+    General format for Action types is "void Do(Type type)". This is the method that all <Type>Actions have. It is called to run the action.
+
+GameObjectAction - Base class for actions
+    bool IsActive {get; protected set;} - Determine whether the action is running or not.
+    ActionState { Success, Running, Failure } - Possible way to get the state of each action in the future. Right now I just use the IsActive flag for this, which is also unnecessary unless
+        I create an ActionQueue for each GameObject so that adding an action will waith until the current action is finished.
+    
+EntityAction : GameObjectAction - Actions for entities. The bulk of the actions because of the player, people, and animals
+
+    Tuple<Need, double>[] UtilityDeltas - Array of needs and the modification values for applying changes to needs. For need fulfillment like hunger, sleep, AI decisions.
+    bool IsInterruptible {get; protected set;} - Set whether the action can be disabled/reset upon taking damage from an attack. Most actions will be overwritten by the AI system anyway
+        but some actions like Mate and Sleep will not be overwritten by the AI system, but can be cancelled by taking damage.
+    
+    Note: Entities have "bool ActionLockState {get; private set}" - Set whether the action can be overwritten by the AI system.
+    
+    public EntityAction(bool isInterruptible) - Constructor to force me to set whether taking damage will overwrite an action.
+    virtual void Do(Entity entity) - Actions that only use the normal "Do(entity)" method have to override this to actually do anything. Made virtual to avoid having to implement an empty "Do(entity)"
+        method for every new entity action.
+    virtual void End() - Provide final actions for EntityActions. Used for SleepAction right now because it has to dispose of an Effect when it finishes or is interrupted.
+    abstract string GetActionName() - Get the name of each action. Used in the ToString() override and for the display panel.
+    
+    SetUtilityDeltas(UtilityDeltas) - Set the value of UtilityDeltas from outside. Used inside the ActionUtility constructor because only actions that are paired with need deltas need to use this.
+        Putting this in the constructor forces all actions to have this set when they are advertised and not when the action is assigned.
+        This simplifies packing the Action with its advertised values so UtilityDecider only has to return an EntityAction and not a Tuple<EntityAction, UtilityDeltas>.
+    
+    
+Modifications - Interfaces and common behavior
+
+    ICheckNearbyObjects: "void Do(Entity entity, ObjectMesh objectMesh)"
+        Runs a normal action that requires knowledge of nearby GameObjects. Using the raw ObjectMesh instead of a List<GameObject> to allow different search radii for each action.
+        Used mainly for player actions like PlayerAttack, PlayerMate; and debugging actions like SearchZoneColorChange
+        
+    ICheckNearbyObjectsWithTime: "void DoWithSearchAndTime(Entity entity, ObjectMesh objectMesh, GameTime time)"
+        Combination of actions that require a timer and knowledge of the game world.
+        E.g. PlayerMateAction
+        
+    class EntityTimeAction: "abstract void DoWithTime(Entity entity, GameTime time)"
+        Runs a normal action that runs for a certain amount of time. Mostly used to make the entity sit still until the timer expires.
+        E.g. MateAction, BirthAction, SleepAction, WaitAction
+        Implemented using another level of inheritance to reduce code bloat from repeating the "create timer, initialize timer, start timer, stop entity" process.
+        Inheriting classes simply need to implement the "DoWithTime" action, have a check if the timer is finished and start the timer if it is not.
+        
+        
+        
+        
+        
+    
